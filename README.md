@@ -39,24 +39,24 @@ No third-party packages or input files are required.
 
 For a straight line, the observation model is
 
-$$
+```math
 y_i = m x_i + b + \varepsilon_i,
-$$
+```
 
 where $x_i$ and $y_i$ are measured data, $m$ is the unknown slope, $b$ is the unknown intercept, and $\varepsilon_i$ represents measurement noise. The code calls the slope `a`, so its `a, b` correspond to the mathematical $m,b$ here.
 
 With noisy measurements, one line generally cannot pass through every point. For a candidate line, the residual is the observed value minus the predicted value:
 
-$$
+```math
 r_i = y_i - (m x_i + b).
-$$
+```
 
 Least squares chooses the parameters that minimise the sum of squared residuals:
 
-$$
+```math
 J(m,b) = \sum_{i=1}^{M} r_i^2
        = \sum_{i=1}^{M} \left[y_i-(m x_i+b)\right]^2.
-$$
+```
 
 Squaring prevents positive and negative residuals from cancelling and gives larger errors a greater contribution to the objective. Here, $M$ is the number of measurements.
 
@@ -64,7 +64,7 @@ Squaring prevents positive and negative residuals from cancelling and gives larg
 
 Use a parameter vector $\boldsymbol{\theta}$ and an observation vector $\mathbf{d}$:
 
-$$
+```math
 \boldsymbol{\theta}=
 \begin{bmatrix}m\\b\end{bmatrix},
 \qquad
@@ -73,30 +73,27 @@ $$
 \qquad
 A=
 \begin{bmatrix}
-x_1 & 1\\
-x_2 & 1\\
-\vdots & \vdots\\
-x_M & 1
+x_1 & 1\\ x_2 & 1\\ \vdots & \vdots\\ x_M & 1
 \end{bmatrix}.
-$$
+```
 
 Each row of $A$ represents one measurement. Each column contains the coefficients multiplying one unknown. In particular,
 
-$$
+```math
 \begin{bmatrix}x_i & 1\end{bmatrix}
 \begin{bmatrix}m\\b\end{bmatrix}
 = m x_i+b.
-$$
+```
 
 The complete model and objective become
 
-$$
+```math
 \mathbf{d}=A\boldsymbol{\theta}+\boldsymbol{\varepsilon},
 \qquad
 \hat{\boldsymbol{\theta}}
-=\operatorname*{arg\,min}_{\boldsymbol{\theta}}
+=\mathop{\mathrm{arg\,min}}_{\boldsymbol{\theta}}
 \left\|\mathbf{d}-A\boldsymbol{\theta}\right\|_2^2.
-$$
+```
 
 This is what the remaining demo constructs:
 
@@ -111,45 +108,42 @@ The second argument named `b` in `lstsq(A, b)` is the **whole observation vector
 
 Expand the objective:
 
-$$
+```math
 \begin{aligned}
 J(\boldsymbol{\theta})
 &=(\mathbf{d}-A\boldsymbol{\theta})^T
-  (\mathbf{d}-A\boldsymbol{\theta})\\
-&=\mathbf{d}^T\mathbf{d}
+  (\mathbf{d}-A\boldsymbol{\theta})\\ &=\mathbf{d}^T\mathbf{d}
   -2\boldsymbol{\theta}^T A^T\mathbf{d}
   +\boldsymbol{\theta}^T A^T A\boldsymbol{\theta}.
 \end{aligned}
-$$
+```
 
 Differentiate with respect to the unknown parameters and set the gradient to zero:
 
-$$
+```math
 \nabla J=-2A^T\mathbf{d}+2A^T A\boldsymbol{\theta}=\mathbf{0}.
-$$
+```
 
 Therefore,
 
-$$
+```math
 \boxed{A^T A\hat{\boldsymbol{\theta}}=A^T\mathbf{d}}.
-$$
+```
 
 These are the **normal equations**. If $A$ has linearly independent columns, $A^T A$ is positive definite, so this solution is the unique minimum.
 
 For the two-unknown line model, the normal equations are explicitly
 
-$$
+```math
 \begin{bmatrix}
-\sum_i x_i^2 & \sum_i x_i\\
-\sum_i x_i & M
+\sum_i x_i^2 & \sum_i x_i\\ \sum_i x_i & M
 \end{bmatrix}
 \begin{bmatrix}m\\b\end{bmatrix}
 =
 \begin{bmatrix}
-\sum_i x_i y_i\\
-\sum_i y_i
+\sum_i x_i y_i\\ \sum_i y_i
 \end{bmatrix}.
-$$
+```
 
 The removed `line_fit()` function used a formula specialised to this two-by-two system. The general solver builds the same system automatically and also works when there are more columns.
 
@@ -157,19 +151,19 @@ The removed `line_fit()` function used a formula specialised to this two-by-two 
 
 For $M$ measurements and $N$ unknowns, the dimensions are
 
-$$
+```math
 A\in\mathbb{R}^{M\times N},\qquad
 \mathbf{d}\in\mathbb{R}^{M},\qquad
 \boldsymbol{\theta}\in\mathbb{R}^{N}.
-$$
+```
 
 `lstsq()` reads $N$ from `len(A[0])`, then computes `ata` and `atb`:
 
-$$
+```math
 (A^T A)_{jk}=\sum_{i=1}^{M} A_{ij}A_{ik},
 \qquad
 (A^T\mathbf{d})_j=\sum_{i=1}^{M} A_{ij}d_i.
-$$
+```
 
 It passes the resulting $N\times N$ system to `solve_linear()`. That function:
 
@@ -180,10 +174,10 @@ It passes the resulting $N\times N$ system to `solve_linear()`. That function:
 
 For an upper-triangular system $U\boldsymbol{\theta}=\mathbf{v}$, back substitution evaluates the rows from bottom to top:
 
-$$
+```math
 \theta_j=
 \frac{v_j-\sum_{k=j+1}^{N}U_{jk}\theta_k}{U_{jj}}.
-$$
+```
 
 The code solves the equations directly; it does not explicitly calculate a matrix inverse.
 
@@ -212,38 +206,38 @@ p, q, r = lstsq(A, ys)  # approximately 1, 2, 3
 
 A unique solution requires
 
-$$
-M\geq N,\qquad \operatorname{rank}(A)=N.
-$$
+```math
+M\geq N,\qquad \mathrm{rank}(A)=N.
+```
 
 Enough measurements are necessary, but they must also provide independent information. For example, repeating the same $x_i$ for every point cannot determine both slope and intercept.
 
-With $M=N$ and full rank, the square system can fit the observations exactly. With $M>N$, least squares finds the best fit to the extra measurements; an exact fit is only possible when those observations are consistent with the model.
+With $M=N$ and full rank, the square system can fit the observations exactly. With $M\gt N$, least squares finds the best fit to the extra measurements; an exact fit is only possible when those observations are consistent with the model.
 
 ## 6. What happens in the current demo?
 
 The demo uses `random.seed(42)` and generates 20 inputs:
 
-$$
+```math
 x_i=0.5i,\qquad i=0,1,\ldots,19.
-$$
+```
 
 It creates observations from a known line with Gaussian noise:
 
-$$
+```math
 y_i=2x_i+1+\varepsilon_i,\qquad
 \varepsilon_i\sim\mathcal{N}(0,0.3^2).
-$$
+```
 
 The noise standard deviation is $0.3$. The known slope and intercept are used to generate and check the data; the solver receives only $A$ and the noisy observations.
 
 After solving, the fitted line is approximately
 
-$$
+```math
 \hat y=2.0109x+0.9559,
 \qquad
 \sum_i(y_i-\hat y_i)^2\approx0.7238.
-$$
+```
 
 The estimates are close to $2$ and $1$, but not identical, because this particular sample contains noise. The residual sum is not zero because the points do not all lie on one line.
 
@@ -258,47 +252,47 @@ These are small regression checks for this example. The normal-equation derivati
 
 For basic single-constellation SPP, estimate receiver coordinates and receiver clock bias:
 
-$$
+```math
 \boldsymbol{\theta}=
 \begin{bmatrix}x&y&z&b_r\end{bmatrix}^T,
 \qquad b_r=c\,\delta t_r.
-$$
+```
 
 Here $c$ is the speed of light; $b_r$ expresses clock bias in metres. With satellite-clock and propagation corrections applied, the simplified pseudorange model is
 
-$$
+```math
 P_i=\rho_i+b_r+\varepsilon_i,
 \qquad
 \rho_i=\sqrt{(x-x_i)^2+(y-y_i)^2+(z-z_i)^2}.
-$$
+```
 
 Satellite coordinates $(x_i,y_i,z_i)$ are known in the same reference frame. At least four satellites with suitable geometry are required. See [ESA Navipedia: Code Based Positioning](https://gssc.esa.int/navipedia/index.php/Code_Based_Positioning_%28SPS%29).
 
 The range is nonlinear in receiver position. At iteration $k$, form predicted ranges $\rho_i^{(k)}$ and observation differences
 
-$$
+```math
 \ell_i=P_i-\left(\rho_i^{(k)}+b_r^{(k)}\right).
-$$
+```
 
 Linearise using one design-matrix row per satellite:
 
-$$
+```math
 H_i=
 \begin{bmatrix}
 \dfrac{x^{(k)}-x_i}{\rho_i^{(k)}}&
 \dfrac{y^{(k)}-y_i}{\rho_i^{(k)}}&
 \dfrac{z^{(k)}-z_i}{\rho_i^{(k)}}&1
 \end{bmatrix}.
-$$
+```
 
 Solve for corrections and update:
 
-$$
+```math
 H\,\Delta\boldsymbol{\theta}\approx\boldsymbol{\ell},
 \qquad
 \boldsymbol{\theta}^{(k+1)}=
 \boldsymbol{\theta}^{(k)}+\Delta\boldsymbol{\theta}.
-$$
+```
 
 The existing `lstsq(H, ell)` can perform each linear solve. A future GNSS implementation must rebuild the system and repeat until convergence, with iteration limits and failure checks. The present script does not perform these steps. Real observations also require measurement corrections; additional constellation clock offsets can introduce more unknowns.
 
