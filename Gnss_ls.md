@@ -2,7 +2,7 @@
 
 This guide develops the mathematics for a basic GNSS Single Point Positioning (SPP) solver, starting from a distance measurement and ending with an iterative least-squares algorithm. It builds on the [linear least-squares explanation](README.md).
 
-**Status:** this is the mathematical plan. The GNSS Python implementation will follow separately. The existing `lstsq()` function can solve each linear correction step.
+**Status:** implemented in [gnss_ls.py](gnss_ls.py), with a runnable synthetic example. Tests are kept locally and excluded from the repository. The derivation below explains its four-unknown Gauss–Newton method. It uses NumPy directly for each linear correction step.
 
 ## 1. What is known, and what is unknown?
 
@@ -255,7 +255,7 @@ With four independent rows, the linear system can be solved exactly, even when t
 
 Full rank guarantees a unique correction for the current linearised system. It does not guarantee a unique global solution to the original nonlinear problem or convergence from every starting point.
 
-The existing solver performs this step as `lstsq(H, ell)`. It forms the normal equations and uses Gaussian elimination, rather than explicitly inverting a matrix. Its second argument is the residual vector, not the scalar clock bias b.
+The implementation calls `numpy.linalg.lstsq(H, ell, rcond=None)` and checks that its returned rank is four. The normal equations above explain the mathematics; the code solves the least-squares system directly for numerical stability, without forming or inverting `H.T @ H`. Its second argument is the residual vector, not the scalar clock bias b.
 
 ## 9. Update and repeat
 
@@ -277,7 +277,7 @@ An illustrative stopping condition checks both position and clock corrections:
 |\Delta b|\lt\tau_b.
 ```
 
-For a synthetic demonstration, both thresholds could be 0.001 metres, with at most 20 iterations. These are proposed algorithm settings, not a claim of millimetre positioning accuracy. Noise and model errors can remain after the updates become small.
+For a synthetic demonstration, both thresholds could be 0.001 metres, with at most 20 iterations. The implemented defaults are 0.0001 metres for both thresholds and 50 iterations. These are algorithm settings, not a claim of millimetre positioning accuracy. Noise and model errors can remain after the updates become small.
 
 Start from an approximate receiver state, with zero clock bias if no better estimate is available. A poor initial position or weak satellite geometry can prevent convergence. The implementation must detect invalid ranges, a singular solve, non-finite values, and reaching the iteration limit without convergence.
 
@@ -326,17 +326,17 @@ H_b\Delta\boldsymbol{\theta}_b=H_t\Delta\boldsymbol{\theta}_t.
 | Distance bias b | 1 | metres | Divide b by c to obtain seconds |
 | Time offset delta t | c | seconds | Already in seconds |
 
-Using b avoids a column of approximately 300 million alongside position coefficients whose absolute values are at most one. This improves column scaling for the educational normal-equation solver; it does not fix poor satellite geometry. We will solve for b and report both b and delta t.
+Using b avoids a column of approximately 300 million alongside position coefficients whose absolute values are at most one. This improves column scaling for the linear least-squares solve; it does not fix poor satellite geometry. The implementation solves for b and report both b and delta t.
 
 Do not combine a fourth matrix entry of one with a clock correction in seconds. Do not estimate b and delta t as separate states: their columns would be dependent.
 
-## 11. Planned implementation sequence
+## 11. Implementation sequence
 
 1. Accept M satellite coordinate triples and M corrected pseudoranges, all in metres.
 2. Check matching lengths, finite inputs, and at least four satellites.
 3. Initialise the receiver state `(x, y, z, b)`.
 4. Calculate each range, predicted pseudorange, prefit residual, and geometry row.
-5. Call `lstsq(H, ell)` to obtain `(dx, dy, dz, db)`.
+5. Call `numpy.linalg.lstsq(H, ell, rcond=None)` to obtain `(dx, dy, dz, db)`.
 6. Add the corrections to the current state.
 7. Stop when both correction thresholds pass, or repeat from step 4 up to the iteration limit.
 8. Recompute final nonlinear residuals and return the state, clock offset in seconds, iteration count, and convergence status.
@@ -351,4 +351,4 @@ P_i^{\mathrm{sim}}=
 
 First use no noise and a nearby initial estimate to check recovery of the known state. Then add controlled noise and compare estimated position and clock bias against truth. Additional checks should cover both clock representations, derivative signs, inadequate geometry, and non-convergence.
 
-This first version will use equal weights and simulated corrected observations. Processing raw GNSS data and estimating additional inter-system clock offsets are later extensions.
+This first version uses equal weights and simulated corrected observations. Processing raw GNSS data and estimating additional inter-system clock offsets are later extensions.

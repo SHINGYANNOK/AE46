@@ -14,9 +14,14 @@ A university Final Year Project (FYP) exploring Global Navigation Satellite Syst
 
 The separate `line_fit(xs, ys)` function was removed because the general `lstsq()` solver can do the same job. The three-unknown `demo_lstsq()` example was also removed to keep one introductory demonstration. Removing that example does **not** restrict the solver to two unknowns: the number of columns in `A` determines the number of unknowns.
 
-GNSS measurement modelling and an iterative positioning solver are **not implemented yet**. The GNSS section below explains the intended connection.
+The second stage is now implemented: [gnss_ls.py](gnss_ls.py) solves the **nonlinear** GNSS positioning problem iteratively (Gauss–Newton), reusing the same least-squares idea for the four unknowns `[x, y, z, b]`.
 
-## Run the example
+| File | Purpose |
+| --- | --- |
+| [least_squares_line.py](least_squares_line.py) | Linear least squares from scratch (standard library only). |
+| [gnss_ls.py](gnss_ls.py) | Gauss–Newton GNSS positioning solver (uses NumPy). |
+
+## Run the examples
 
 From the repository directory, run:
 
@@ -33,7 +38,17 @@ sum of squared residuals: 0.7238
 checks passed
 ```
 
-No third-party packages or input files are required.
+No third-party packages or input files are required for this part.
+
+The GNSS solver needs NumPy. Install it into the same Python environment used to run the code:
+
+```bash
+python3 -m pip install numpy
+```
+
+```bash
+python3 gnss_ls.py        # synthetic worked example with verbose iterations
+```
 
 ## 1. What are we estimating?
 
@@ -250,19 +265,46 @@ These are small regression checks for this example. The normal-equation derivati
 
 ## 7. Connection to GNSS: four unknowns
 
-The next stage estimates receiver position `(x, y, z)` and receiver clock bias. Clock bias can be represented as a distance b in metres or an offset delta t in seconds, related by $b=c\delta t$; these are two representations of the same fourth unknown.
+The GNSS stage estimates receiver position `(x, y, z)` and receiver clock bias. Clock bias can be represented as a distance b in metres or an offset delta t in seconds, related by $b=c\delta t$; these are two representations of the same fourth unknown.
 
 See [GNSS least squares: step-by-step derivation](Gnss_ls.md) for the pseudorange model, Taylor expansion, partial derivatives, geometry matrix, correction solve, iteration, and clock-unit comparison.
 
-The GNSS implementation is not written yet. It will reuse `lstsq()` to solve the four linearised corrections at each iteration.
+## 7b. The implemented positioning solver ([gnss_ls.py](gnss_ls.py))
+
+**Input.** `SAT` is an N×4 matrix (N ≥ 4); row *i* is `[X_i, Y_i, Z_i, P_i]`: satellite ECEF coordinates in metres and the measured pseudorange in metres. Inputs are assumed already corrected for satellite clock error, atmosphere and Earth rotation — this is a simplified educational solver, not a raw-observation processor.
+
+**Unknowns.** `q = [x, y, z, b]`: receiver ECEF position and receiver clock bias in metres (`delta_t = b / 299792458` gives the bias in seconds).
+
+**Algorithm (Gauss–Newton).** At the current estimate `q`:
+
+1. Geometric ranges: `rho_i = sqrt((x-X_i)² + (y-Y_i)² + (z-Z_i)²)`
+2. Predicted pseudoranges: `P_pred_i = rho_i + b`
+3. Residuals: `v_i = P_i - P_pred_i` (measured minus predicted)
+4. Jacobian row *i*: `[(x-X_i)/rho_i, (y-Y_i)/rho_i, (z-Z_i)/rho_i, 1]` — the partial derivatives of the measurement model: the position part is the unit vector from satellite to receiver (the negative of the receiver-to-satellite line of sight), and the bias column is 1 because the bias enters the model directly.
+5. Solve `min ||v - H dq||²` for the **correction** `dq` (its normal equations are `HᵀH dq = Hᵀv`; the code uses `numpy.linalg.lstsq` for stability and never forms `HᵀH`).
+6. Update all four parameters together: `q ← q + dq`, rebuild `H` at the new `q`, and repeat — that rebuild is what makes the loop Gauss–Newton rather than a one-shot linear fit.
+
+Key distinctions the code makes explicit:
+
+- `q` is the current estimate; `dq` contains **corrections**, not coordinates.
+- `v` is evaluated at the *current* estimate, not at the solution.
+- A full Gauss–Newton step need not reduce the objective every iteration; no damping, weighting, or line search is added.
+- The pseudorange residual RMSE is a **fit** quality measure; it is not the position error. Small fitted residuals do not prove an accurate receiver position — that also requires good satellite geometry.
+- Convergence from a distant initial guess (default `[0, 0, 0, 0]` is the Earth's centre) is not guaranteed.
+
+**Output.** `solve_gnss_ls` returns a `GNSSResult` with the receiver ECEF coordinates, clock bias in metres and seconds, convergence status and reason, iteration count, final residual vector and sum of squared residuals, pseudorange RMSE, and a per-iteration history (old estimate, correction, updated estimate, objective before and after). Rank-deficient geometry (`rank(H) < 4`), malformed inputs, nonfinite values and zero geometric range are reported as failures, never as success.
+
+Invalid inputs and zero geometric range raise `ValueError`. Rank deficiency, decomposition failure, overflow, and the iteration limit return `converged=False` with a reason. The result retains the last accepted state; residuals and fit metrics are NaN if the initial model cannot be evaluated. `iterations` counts completed updates and equals the history length. Tolerances must be finite positive scalars; `max_iterations` must be a positive integer.
+
+**Worked example.** `gnss_ls.py` runs a synthetic 5-satellite example. At the first iteration from `q0 = [0, 0, 6370000, 0]`, the hand-checkable values are `v = [9, 21, 16, 10, 10]`, `dq = [10, -5, 20, 30]`, `J_before = 978 m²`, `J_after ≈ 4.000003 m²`. The data are synthetic educational values, not a real GNSS dataset.
 
 ## 8. Current limitations and next steps
 
-This is a small educational implementation:
+The original standard-library linear solver has these limitations (the NumPy GNSS solver validates its inputs and solves directly with `numpy.linalg.lstsq`):
 
 - Inputs must be nonempty, rectangular, dimensionally consistent, and finite. The code does not yet validate all these conditions; mismatched observation lengths can be silently truncated by `zip()`.
 - The solver requires independent columns. `solve_linear()` rejects a pivot whose absolute value is below `1e-12`; this fixed threshold is sensitive to scale and is not a full conditioning check.
 - Forming normal equations can amplify numerical errors. For a full-column-rank matrix, $\kappa_2(A^T A)=\kappa_2(A)^2$. QR or SVD would be preferable for difficult numerical problems.
-- All measurements currently have equal weight. Weighted least squares, GNSS data loading, measurement corrections, and convergence handling are not implemented.
+- All measurements currently have equal weight. Weighted least squares, GNSS data loading, and real measurement corrections are not implemented.
 
-The next development step is a simulated GNSS example: generate satellite coordinates and pseudoranges from a known receiver state, estimate the four unknowns iteratively, and compare the result with the known state.
+The simulated GNSS example described above is now implemented in [gnss_ls.py](gnss_ls.py): satellite coordinates and pseudoranges generated from a known receiver state, four unknowns estimated iteratively, and the result compared with the known state in local tests (not included in this repository).
