@@ -250,51 +250,11 @@ These are small regression checks for this example. The normal-equation derivati
 
 ## 7. Connection to GNSS: four unknowns
 
-For basic single-constellation SPP, estimate receiver coordinates and receiver clock bias:
+The next stage estimates receiver position `(x, y, z)` and receiver clock bias. Clock bias can be represented as a distance b in metres or an offset delta t in seconds, related by $b=c\delta t$; these are two representations of the same fourth unknown.
 
-```math
-\boldsymbol{\theta}=
-\begin{bmatrix}x&y&z&b_r\end{bmatrix}^T,
-\qquad b_r=c\,\delta t_r.
-```
+See [GNSS least squares: step-by-step derivation](Gnss_ls.md) for the pseudorange model, Taylor expansion, partial derivatives, geometry matrix, correction solve, iteration, and clock-unit comparison.
 
-Here $c$ is the speed of light; $b_r$ expresses clock bias in metres. With satellite-clock and propagation corrections applied, the simplified pseudorange model is
-
-```math
-P_i=\rho_i+b_r+\varepsilon_i,
-\qquad
-\rho_i=\sqrt{(x-x_i)^2+(y-y_i)^2+(z-z_i)^2}.
-```
-
-Satellite coordinates $(x_i,y_i,z_i)$ are known in the same reference frame. At least four satellites with suitable geometry are required. See [ESA Navipedia: Code Based Positioning](https://gssc.esa.int/navipedia/index.php/Code_Based_Positioning_%28SPS%29).
-
-The range is nonlinear in receiver position. At iteration $k$, form predicted ranges $\rho_i^{(k)}$ and observation differences
-
-```math
-\ell_i=P_i-\left(\rho_i^{(k)}+b_r^{(k)}\right).
-```
-
-Linearise using one design-matrix row per satellite:
-
-```math
-H_i=
-\begin{bmatrix}
-\dfrac{x^{(k)}-x_i}{\rho_i^{(k)}}&
-\dfrac{y^{(k)}-y_i}{\rho_i^{(k)}}&
-\dfrac{z^{(k)}-z_i}{\rho_i^{(k)}}&1
-\end{bmatrix}.
-```
-
-Solve for corrections and update:
-
-```math
-H\,\Delta\boldsymbol{\theta}\approx\boldsymbol{\ell},
-\qquad
-\boldsymbol{\theta}^{(k+1)}=
-\boldsymbol{\theta}^{(k)}+\Delta\boldsymbol{\theta}.
-```
-
-The existing `lstsq(H, ell)` can perform each linear solve. A future GNSS implementation must rebuild the system and repeat until convergence, with iteration limits and failure checks. The present script does not perform these steps. Real observations also require measurement corrections; additional constellation clock offsets can introduce more unknowns.
+The GNSS implementation is not written yet. It will reuse `lstsq()` to solve the four linearised corrections at each iteration.
 
 ## 8. Current limitations and next steps
 
