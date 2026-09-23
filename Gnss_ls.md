@@ -2,7 +2,7 @@
 
 This guide develops the mathematics for a basic GNSS Single Point Positioning (SPP) solver, starting from a distance measurement and ending with an iterative least-squares algorithm. It builds on the [linear least-squares explanation](README.md).
 
-**Status:** implemented in [gnss_ls.py](gnss_ls.py), with a runnable synthetic example. Tests are kept locally and excluded from the repository. The derivation below explains its four-unknown Gauss–Newton method. It uses NumPy directly for each linear correction step.
+**Status:** implemented in [gnss_ls.py](gnss_ls.py), with a runnable synthetic example and committed tests. The derivation below explains its four-unknown Gauss–Newton method. It uses NumPy directly for each linear correction step and supports optional independent Gaussian pseudorange standard deviations. See [Gaussian MLE and least-squares GNSS positioning](Gaussian_MLE_GNSS.md) for the statistical derivation.
 
 ## 1. What is known, and what is unknown?
 
@@ -97,7 +97,7 @@ For M satellites, the nonlinear least-squares objective is
 J(\boldsymbol{\theta}_b)=\sum_{i=1}^{M}\left[P_i-\rho_i(x,y,z)-b\right]^2.
 ```
 
-We want the position and clock bias giving the smallest total squared residual. Equal weighting is assumed here.
+With equal weighting, we want the position and clock bias giving the smallest total squared residual. The implementation also accepts standard deviations `sigma_i` and minimises `sum((r_i / sigma_i)^2)`, which is weighted least squares and the maximum-likelihood objective for independent Gaussian pseudorange errors.
 
 Unlike fitting a straight line, the unknown coordinates appear inside a square root. We cannot pass these nonlinear equations directly to `lstsq()`. We first approximate the model by a linear system near a current estimate, solve for a correction, and repeat.
 
@@ -255,7 +255,7 @@ With four independent rows, the linear system can be solved exactly, even when t
 
 Full rank guarantees a unique correction for the current linearised system. It does not guarantee a unique global solution to the original nonlinear problem or convergence from every starting point.
 
-The implementation calls `numpy.linalg.lstsq(H, ell, rcond=None)` and checks that its returned rank is four. The normal equations above explain the mathematics; the code solves the least-squares system directly for numerical stability, without forming or inverting `H.T @ H`. Its second argument is the residual vector, not the scalar clock bias b.
+For ordinary least squares, the implementation calls `numpy.linalg.lstsq(H, ell, rcond=None)`. With supplied standard deviations, it divides row `i` of `H` and `ell_i` by `sigma_i`, then calls `numpy.linalg.lstsq(H_weighted, ell_weighted, rcond=None)`. It checks that the returned rank is four. The normal equations explain the mathematics; the code solves the least-squares system directly for numerical stability, without forming or inverting `H.T @ H`. The second argument is the residual vector, not the scalar clock bias b.
 
 ## 9. Update and repeat
 
@@ -336,7 +336,7 @@ Do not combine a fourth matrix entry of one with a clock correction in seconds. 
 2. Check matching lengths, finite inputs, and at least four satellites.
 3. Initialise the receiver state `(x, y, z, b)`.
 4. Calculate each range, predicted pseudorange, prefit residual, and geometry row.
-5. Call `numpy.linalg.lstsq(H, ell, rcond=None)` to obtain `(dx, dy, dz, db)`.
+5. If standard deviations are supplied, whiten `H` and `ell` by dividing each row by its standard deviation; call `numpy.linalg.lstsq` to obtain `(dx, dy, dz, db)`.
 6. Add the corrections to the current state.
 7. Stop when both correction thresholds pass, or repeat from step 4 up to the iteration limit.
 8. Recompute final nonlinear residuals and return the state, clock offset in seconds, iteration count, and convergence status.
@@ -351,4 +351,4 @@ P_i^{\mathrm{sim}}=
 
 First use no noise and a nearby initial estimate to check recovery of the known state. Then add controlled noise and compare estimated position and clock bias against truth. Additional checks should cover both clock representations, derivative signs, inadequate geometry, and non-convergence.
 
-This first version uses equal weights and simulated corrected observations. Processing raw GNSS data and estimating additional inter-system clock offsets are later extensions.
+This version supports equal weights or independent per-satellite Gaussian standard deviations, using simulated corrected observations. Full correlated covariance models, robust estimation, processing raw GNSS data and estimating additional inter-system clock offsets are later extensions.

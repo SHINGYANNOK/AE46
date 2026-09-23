@@ -1,6 +1,6 @@
 # AE46 — Least Squares for GNSS Positioning
 
-A university Final Year Project (FYP) exploring Global Navigation Satellite Systems (GNSS). The first stage builds a general linear least-squares solver and demonstrates it by fitting a straight line. The planned next stage applies that foundation to Single Point Positioning (SPP).
+A university Final Year Project (FYP) exploring Global Navigation Satellite Systems (GNSS). The project builds least squares from a linear straight-line example, applies it to nonlinear Single Point Positioning (SPP), and then connects the positioning objective to Gaussian maximum-likelihood estimation and weighted least squares.
 
 ## Current implementation
 
@@ -19,7 +19,10 @@ The second stage is now implemented: [gnss_ls.py](gnss_ls.py) solves the **nonli
 | File | Purpose |
 | --- | --- |
 | [least_squares_line.py](least_squares_line.py) | Linear least squares from scratch (standard library only). |
-| [gnss_ls.py](gnss_ls.py) | Gauss–Newton GNSS positioning solver (uses NumPy). |
+| [gnss_ls.py](gnss_ls.py) | Ordinary or Gaussian weighted Gauss–Newton GNSS positioning (uses NumPy). |
+| [Gnss_ls.md](Gnss_ls.md) | Step-by-step four-unknown GNSS least-squares derivation. |
+| [Gaussian_MLE_GNSS.md](Gaussian_MLE_GNSS.md) | Statistical derivation connecting Gaussian MLE, ordinary LS and weighted LS. |
+| [test_gnss_ls.py](test_gnss_ls.py) | Regression tests for ordinary and weighted positioning. |
 
 ## Run the examples
 
@@ -43,11 +46,12 @@ No third-party packages or input files are required for this part.
 The GNSS solver needs NumPy. Install it into the same Python environment used to run the code:
 
 ```bash
-python3 -m pip install numpy
+python3 -m pip install -r requirements.txt
 ```
 
 ```bash
-python3 gnss_ls.py        # synthetic worked example with verbose iterations
+python3 gnss_ls.py             # synthetic worked example with verbose iterations
+python3 -m unittest -v         # ordinary and weighted least-squares tests
 ```
 
 ## 1. What are we estimating?
@@ -281,22 +285,29 @@ See [GNSS least squares: step-by-step derivation](Gnss_ls.md) for the pseudorang
 2. Predicted pseudoranges: `P_pred_i = rho_i + b`
 3. Residuals: `v_i = P_i - P_pred_i` (measured minus predicted)
 4. Jacobian row *i*: `[(x-X_i)/rho_i, (y-Y_i)/rho_i, (z-Z_i)/rho_i, 1]` — the partial derivatives of the measurement model: the position part is the unit vector from satellite to receiver (the negative of the receiver-to-satellite line of sight), and the bias column is 1 because the bias enters the model directly.
-5. Solve `min ||v - H dq||²` for the **correction** `dq` (its normal equations are `HᵀH dq = Hᵀv`; the code uses `numpy.linalg.lstsq` for stability and never forms `HᵀH`).
+5. Solve for the **correction** `dq`. With no uncertainties this is `min ||v - H dq||²`. With standard deviations `sigma_i`, the code whitens each row and solves `min ||v/sigma - (H/sigma) dq||²`, the Gaussian weighted maximum-likelihood problem. `numpy.linalg.lstsq` is used for stability without forming normal equations.
 6. Update all four parameters together: `q ← q + dq`, rebuild `H` at the new `q`, and repeat — that rebuild is what makes the loop Gauss–Newton rather than a one-shot linear fit.
 
 Key distinctions the code makes explicit:
 
 - `q` is the current estimate; `dq` contains **corrections**, not coordinates.
 - `v` is evaluated at the *current* estimate, not at the solution.
-- A full Gauss–Newton step need not reduce the objective every iteration; no damping, weighting, or line search is added.
+- A full Gauss–Newton step need not reduce the objective every iteration; no damping or line search is added.
+- `pseudorange_std_m=None` gives ordinary least squares; a positive scalar or one positive standard deviation per satellite enables Gaussian weighting.
 - The pseudorange residual RMSE is a **fit** quality measure; it is not the position error. Small fitted residuals do not prove an accurate receiver position — that also requires good satellite geometry.
 - Convergence from a distant initial guess (default `[0, 0, 0, 0]` is the Earth's centre) is not guaranteed.
 
-**Output.** `solve_gnss_ls` returns a `GNSSResult` with the receiver ECEF coordinates, clock bias in metres and seconds, convergence status and reason, iteration count, final residual vector and sum of squared residuals, pseudorange RMSE, and a per-iteration history (old estimate, correction, updated estimate, objective before and after). Rank-deficient geometry (`rank(H) < 4`), malformed inputs, nonfinite values and zero geometric range are reported as failures, never as success.
+**Output.** `solve_gnss_ls` returns a `GNSSResult` with the receiver ECEF coordinates, clock bias in metres and seconds, convergence status and reason, iteration count, physical and normalised residual statistics, a local linearised state-covariance approximation, and a per-iteration history containing both unweighted and weighted objectives. Rank-deficient geometry (`rank(H) < 4`), malformed inputs, invalid standard deviations, nonfinite values and zero geometric range are reported as failures, never as success.
 
 Invalid inputs and zero geometric range raise `ValueError`. Rank deficiency, decomposition failure, overflow, and the iteration limit return `converged=False` with a reason. The result retains the last accepted state; residuals and fit metrics are NaN if the initial model cannot be evaluated. `iterations` counts completed updates and equals the history length. Tolerances must be finite positive scalars; `max_iterations` must be a positive integer.
 
 **Worked example.** `gnss_ls.py` runs a synthetic 5-satellite example. At the first iteration from `q0 = [0, 0, 6370000, 0]`, the hand-checkable values are `v = [9, 21, 16, 10, 10]`, `dq = [10, -5, 20, 30]`, `J_before = 978 m²`, `J_after ≈ 4.000003 m²`. The data are synthetic educational values, not a real GNSS dataset.
+
+## 7c. Gaussian maximum likelihood and weighting
+
+See [Gaussian maximum likelihood and least-squares GNSS positioning](Gaussian_MLE_GNSS.md) for the probability model and full derivation. The main result is that independent Gaussian pseudorange errors lead to a weighted least-squares objective `sum((r_i / sigma_i)²)`. Equal standard deviations differ only by a constant scale and therefore give the ordinary least-squares estimate.
+
+The solver accepts `pseudorange_std_m` as `None`, a positive scalar, or an N-element positive vector. It whitens the Jacobian and residual vector before calling `numpy.linalg.lstsq`, avoiding explicit formation of `R⁻¹` or weighted normal equations.
 
 ## 8. Current limitations and next steps
 
@@ -305,6 +316,7 @@ The original standard-library linear solver has these limitations (the NumPy GNS
 - Inputs must be nonempty, rectangular, dimensionally consistent, and finite. The code does not yet validate all these conditions; mismatched observation lengths can be silently truncated by `zip()`.
 - The solver requires independent columns. `solve_linear()` rejects a pivot whose absolute value is below `1e-12`; this fixed threshold is sensitive to scale and is not a full conditioning check.
 - Forming normal equations can amplify numerical errors. For a full-column-rank matrix, $\kappa_2(A^T A)=\kappa_2(A)^2$. QR or SVD would be preferable for difficult numerical problems.
-- All measurements currently have equal weight. Weighted least squares, GNSS data loading, and real measurement corrections are not implemented.
+- Weighting currently supports independent measurements through one standard deviation per satellite. A full correlated covariance matrix, robust losses and automatic uncertainty models are not implemented.
+- GNSS data loading and corrections for raw observations are not implemented.
 
-The simulated GNSS example described above is now implemented in [gnss_ls.py](gnss_ls.py): satellite coordinates and pseudoranges generated from a known receiver state, four unknowns estimated iteratively, and the result compared with the known state in local tests (not included in this repository).
+The simulated GNSS example described above is implemented in [gnss_ls.py](gnss_ls.py). The committed [test suite](test_gnss_ls.py) checks exact-state recovery, equivalence of equal weighting and ordinary least squares, reduced influence from an uncertain outlier, statistical outputs, and invalid uncertainty inputs.
