@@ -26,6 +26,25 @@ Use `--field raw_pseudo --output /path/to/raw_results` to inspect the raw column
 separately. Raw pseudoranges do not give a credible ground-receiver solution with
 this simplified model and require upstream corrections.
 
+## Remove low satellites and recalculate
+
+```bash
+python analysis/spp_position/run_least_squares.py /path/to/sppStruct_user.mat --min-elevation-deg 15
+```
+
+This removes individual readings when the satellite is less than 15 degrees above
+the horizon. Angles are recomputed from satellite coordinates and the receiver
+position recovered by the unfiltered combined fit; the questionable supplied
+angle fields are not used. The selected readings are then fitted with ordinary
+least squares and equal weights. A satellite can be kept at one time and removed
+at another. This rule identifies low satellites, not proven building obstruction.
+
+Results go to a separate `least_squares_filtered_15deg/` folder, preserving the
+unfiltered results. `satellite_filter.csv` records the original observation index,
+recomputed angle and keep/drop decision for all readings. Residual observation
+indices retain their original input order. Use a different numeric cutoff to run
+another comparison, or `--output` to choose the destination.
+
 ## Staged atmosphere and weighting experiment
 
 ```bash

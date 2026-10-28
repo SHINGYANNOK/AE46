@@ -1,7 +1,7 @@
 """Independent checks of the combined stationary ordinary LS estimator."""
 import unittest
 import numpy as np
-from run_least_squares import stationary_least_squares
+from run_least_squares import stationary_least_squares, minimum_elevation_mask
 from test_gnss_ls import synthetic_problem
 
 
@@ -52,6 +52,24 @@ class TestStationaryLeastSquares(unittest.TestCase):
     def test_unidentifiable_geometry_is_rejected(self):
         xyz=np.tile([20e6,0,0],(5,1))
         with self.assertRaises(ValueError):stationary_least_squares([(xyz,np.full(5,20e6))])
+
+
+class TestElevationFilter(unittest.TestCase):
+    def test_uses_geometry_and_keeps_boundary_observation(self):
+        receiver=np.array([6378137.0,0,0])
+        expected=np.array([-5.0,5.0,14.0,15.0,25.0,80.0])
+        angles=np.radians(expected)
+        # At latitude=longitude=0, ECEF X is local up and Z is local north.
+        xyz=receiver+20e6*np.column_stack([np.sin(angles),np.zeros(len(angles)),np.cos(angles)])
+        elevation,keep=minimum_elevation_mask(xyz,receiver,15)
+        np.testing.assert_allclose(elevation,expected,atol=1e-10)
+        np.testing.assert_array_equal(keep,[False,False,False,True,True,True])
+
+    def test_rejects_invalid_cutoffs_and_shapes(self):
+        receiver=np.array([6378137.0,0,0]);xyz=np.array([[20e6,10e6,10e6]])
+        for minimum in [-1,90,float('nan'),float('inf')]:
+            with self.assertRaises(ValueError):minimum_elevation_mask(xyz,receiver,minimum)
+        with self.assertRaises(ValueError):minimum_elevation_mask(xyz[:,0],receiver,15)
 
 
 if __name__=='__main__':unittest.main(verbosity=2)

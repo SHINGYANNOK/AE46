@@ -61,16 +61,48 @@ def stationary_least_squares(epochs, q0=None, tolerance_m=1e-4, max_iterations=3
             'objective_m2':float(all_residuals@all_residuals)}
 
 
+
+def minimum_elevation_mask(satellite_xyz, receiver_xyz, minimum_deg):
+    """Return geometry-derived angles and selection; never read supplied angles."""
+    if not np.isfinite(minimum_deg) or not 0 <= minimum_deg < 90:
+        raise ValueError('Minimum elevation must be finite and between 0 and 90 degrees (exclusive of 90)')
+    xyz = np.asarray(satellite_xyz, dtype=float)
+    receiver = np.asarray(receiver_xyz, dtype=float)
+    if xyz.ndim != 2 or xyz.shape[1] != 3 or receiver.shape != (3,):
+        raise ValueError('Expected satellite XYZ with shape (N,3) and receiver XYZ with shape (3,)')
+    local = (xyz-receiver) @ enu_rotation(receiver).T
+    elevation = np.degrees(np.arctan2(local[:,2],np.linalg.norm(local[:,:2],axis=1)))
+    # Keep a satellite exactly at the boundary despite floating-point rounding.
+    return elevation, elevation >= minimum_deg-1e-10
+
+
 def write_csv(path, header, rows):
     with path.open('w',newline='',encoding='utf8') as f:
         writer=csv.writer(f);writer.writerow(header);writer.writerows(rows)
 
 
-def run(input_path, field, output_dir):
+def run(input_path, field, output_dir, min_elevation_deg=None):
     rows=load(input_path);output_dir=Path(output_dir);output_dir.mkdir(parents=True,exist_ok=True)
     # Time fields below are output labels only; they do not enter either estimator.
     epochs=[(np.column_stack([row[k].ravel() for k in ('sat_x','sat_y','sat_z')]),
              row[field].ravel().copy()) for row in rows]
+    original_count=sum(len(xyz) for xyz,_ in epochs)
+    observation_indices=[np.arange(1,len(xyz)+1) for xyz,_ in epochs]
+    selection=None
+    if min_elevation_deg is not None:
+        if not np.isfinite(min_elevation_deg) or not 0 <= min_elevation_deg < 90:
+            raise ValueError('Minimum elevation must be between 0 and 90 degrees (exclusive of 90)')
+        reference=stationary_least_squares(epochs)
+        if not reference['converged']:raise ValueError('Unfiltered reference fit did not converge')
+        kept_epochs=[];selection=[]
+        for i,(xyz,pseudo) in enumerate(epochs):
+            elevation,keep=minimum_elevation_mask(xyz,reference['position'],min_elevation_deg)
+            if np.sum(keep)<4:
+                raise ValueError(f'Epoch {i+1}: only {np.sum(keep)} satellites pass the elevation cutoff')
+            selection.append((elevation,keep))
+            observation_indices[i]=observation_indices[i][keep]
+            kept_epochs.append((xyz[keep],pseudo[keep]))
+        epochs=kept_epochs
     results=[];normal_eq_checks=[];first_trace=[]
     for i,(xyz,pseudo) in enumerate(epochs):
         result=solve_gnss_ls(np.column_stack([xyz,pseudo]))
@@ -121,12 +153,27 @@ def run(input_path, field, output_dir):
                   'Scatter is relative to the per-epoch median; no surveyed ground truth is available.',
                   'The combined fit is only appropriate if the receiver remained stationary.',
                   'A single common receiver clock per epoch does not separately model inter-constellation offsets.']}
+    if selection is not None:
+        retained_count=sum(len(xyz) for xyz,_ in epochs)
+        report['satellite_filter']={
+            'minimum_elevation_deg':float(min_elevation_deg),
+            'reference_source':'Unfiltered stationary combined least-squares fit to the same XYZ and pseudoranges',
+            'reference_ecef_m':reference['position'].tolist(),
+            'angle_source':'Recomputed from satellite XYZ and reference receiver XYZ; supplied sat_el and sat_az unused',
+            'scope':'Individual observations filtered at each epoch; satellite IDs are not permanently excluded',
+            'original_observations':original_count,'retained_observations':retained_count,
+            'removed_observations':original_count-retained_count,
+            'removed_percent':100*(original_count-retained_count)/original_count,
+        }
+        write_csv(output_dir/'satellite_filter.csv',
+                  ['epoch_1based','original_observation_1based','recomputed_elevation_deg','kept'],
+                  ([i+1,j+1,float(el),bool(keep[j])] for i,(elevation,keep) in enumerate(selection) for j,el in enumerate(elevation)))
     write_csv(output_dir/'positions.csv',
               ['epoch_1based','gps_week','tow_s','x_ecef_m','y_ecef_m','z_ecef_m','latitude_deg','longitude_deg','ellipsoidal_height_m','receiver_clock_bias_m','receiver_clock_bias_s','pseudorange_residual_rms_m','satellite_count','iterations','east_from_median_m','north_from_median_m','up_from_median_m'],
               ([i+1,float(row['week'].flat[0]),float(row['tow'].flat[0]),*r.position,*llh(r.position),r.clock_bias_m,r.clock_bias_s,r.pseudorange_rmse_m,len(epochs[i][0]),r.iterations,*local[i]] for i,(row,r) in enumerate(zip(rows,results))))
     write_csv(output_dir/'residuals.csv',
               ['epoch_1based','observation_1based','per_epoch_ls_residual_m','stationary_ls_residual_m'],
-              ([i+1,j+1,float(v),float(stationary['residuals'][i][j])] for i,r in enumerate(results) for j,v in enumerate(r.residuals)))
+              ([i+1,int(observation_indices[i][j]),float(v),float(stationary['residuals'][i][j])] for i,r in enumerate(results) for j,v in enumerate(r.residuals)))
     write_csv(output_dir/'stationary_epoch_clocks.csv',
               ['epoch_1based','gps_week','tow_s','clock_bias_m','clock_bias_s'],
               ([i+1,float(row['week'].flat[0]),float(row['tow'].flat[0]),b,b/C] for i,(row,b) in enumerate(zip(rows,stationary['clock_biases_m']))))
@@ -187,10 +234,24 @@ From the repository root, with NumPy installed:
 
 Use --field raw_pseudo and a separate --output directory to test the unprocessed pseudorange column. Its earlier fit was not a credible ground-receiver solution.
 '''
+    if selection is not None:
+        f=report['satellite_filter']
+        filter_text=f"""## Satellite filter
+
+Readings less than {min_elevation_deg:g} degrees above the horizon were removed, using angles recomputed from satellite XYZ and the receiver position recovered by the unfiltered stationary fit. The stored sat_el and sat_az fields were not used. This is a low-elevation filter, not a claim that every removed measurement was blocked or every retained measurement was unobstructed. A satellite is reconsidered at each epoch rather than permanently removed by ID.
+
+Removed {f['removed_observations']:,} of {f['original_observations']:,} observations ({f['removed_percent']:.2f}%). The remaining {f['retained_observations']:,} observations are fitted with equal weights. The unfiltered receiver reference is fixed while selecting observations, so the rule is reproducible. satellite_filter.csv records every original observation and its keep/drop decision. Residual CSV observation indices refer to the original input order, including gaps for removed observations.
+
+"""
+        text=text.replace('## Combined fit assuming a stationary receiver',filter_text+'## Combined fit assuming a stationary receiver')
+        text=text.replace('Use --field raw_pseudo',f'Use --min-elevation-deg {min_elevation_deg:g} to repeat this filtered run. Use --field raw_pseudo')
+        text=text.replace('sppStruct_user.mat"\n',f'sppStruct_user.mat" --min-elevation-deg {min_elevation_deg:g}\n')
     (output_dir/'least_squares_report.md').write_text(text,encoding='utf8')
     print(json.dumps(report,indent=2),flush=True)
 
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('input');p.add_argument('--field',choices=['cor_pseudo','raw_pseudo'],default='cor_pseudo');p.add_argument('--output',default=str(HERE/'least_squares'))
-    a=p.parse_args();run(a.input,a.field,a.output)
+    p=argparse.ArgumentParser();p.add_argument('input');p.add_argument('--field',choices=['cor_pseudo','raw_pseudo'],default='cor_pseudo');p.add_argument('--output');p.add_argument('--min-elevation-deg',type=float,help='Exclude individual observations below this recomputed elevation (degrees)')
+    a=p.parse_args()
+    default_folder='least_squares' if a.min_elevation_deg is None else f'least_squares_filtered_{a.min_elevation_deg:g}deg'
+    run(a.input,a.field,a.output or str(HERE/default_folder),a.min_elevation_deg)

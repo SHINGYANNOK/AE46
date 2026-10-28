@@ -1,0 +1,102 @@
+{
+  "input_sha256": "c74dcbe5580ac40cdd24b3c1546208c5cbce0694e16947e62f8721f4ce9809b3",
+  "pseudorange_field": "cor_pseudo",
+  "estimator_inputs": [
+    "sat_x",
+    "sat_y",
+    "sat_z",
+    "cor_pseudo"
+  ],
+  "time_metadata": "week/tow label exported rows only; not used to estimate position",
+  "weights": "equal for every observation",
+  "additional_corrections_applied": [],
+  "input_correction_history": "cor_pseudo is supplied already processed; exact source corrections unknown",
+  "epochs": 6693,
+  "satellite_observations": 179200,
+  "satellites_per_epoch_min_max": [
+    25,
+    29
+  ],
+  "per_epoch": {
+    "converged_epochs": 6693,
+    "median_ecef_m": [
+      -2419184.0275852233,
+      5384991.166809202,
+      2406534.376694026
+    ],
+    "mean_ecef_m": [
+      -2419184.0715385457,
+      5384989.136947659,
+      2406534.632183966
+    ],
+    "median_position_lat_lon_ellipsoidal_height": [
+      22.31309820727628,
+      114.19179400503613,
+      30.44198645465076
+    ],
+    "horizontal_scatter_percentiles_50_95_99_m": [
+      2.457609640676592,
+      6.788865854110833,
+      18.42975515165339
+    ],
+    "enu_scatter_standard_deviation_m": [
+      2.686061499603914,
+      2.8334391314541802,
+      11.691873821039346
+    ],
+    "residual_rms_percentiles_50_95_m": [
+      8.915850599775052,
+      10.153511368562834
+    ],
+    "iterations_min_median_max": [
+      5,
+      5.0,
+      6
+    ],
+    "max_final_normal_equation_absolute_component_m": 1.2665987014770508e-07,
+    "max_remaining_linearized_state_step_norm_m": 1.6207956086503846e-08
+  },
+  "stationary_combined": {
+    "assumption": "One constant receiver XYZ over the recording; independent clock bias at each epoch",
+    "position_ecef_m": [
+      -2419184.135172558,
+      5384989.921918646,
+      2406534.9478199114
+    ],
+    "position_lat_lon_ellipsoidal_height": [
+      22.31310672092433,
+      114.1917999087488,
+      29.64907663874328
+    ],
+    "converged": true,
+    "iterations": 5,
+    "residual_rms_m": 9.648852368226551,
+    "objective_sum_squared_residuals_m2": 16683583.082670543,
+    "offset_from_per_epoch_median_enu_m": [
+      0.6082855691416809,
+      0.9427591635756298,
+      -0.7929099149846651
+    ]
+  },
+  "limits": [
+    "Residual RMS is model fit, not position accuracy.",
+    "Scatter is relative to the per-epoch median; no surveyed ground truth is available.",
+    "The combined fit is only appropriate if the receiver remained stationary.",
+    "A single common receiver clock per epoch does not separately model inter-constellation offsets."
+  ],
+  "satellite_filter": {
+    "minimum_elevation_deg": 15.0,
+    "reference_source": "Unfiltered stationary combined least-squares fit to the same XYZ and pseudoranges",
+    "reference_ecef_m": [
+      -2419185.388948666,
+      5384993.44321855,
+      2406538.8714224347
+    ],
+    "angle_source": "Recomputed from satellite XYZ and reference receiver XYZ; supplied sat_el and sat_az unused",
+    "scope": "Individual observations filtered at each epoch; satellite IDs are not permanently excluded",
+    "original_observations": 196405,
+    "retained_observations": 179200,
+    "removed_observations": 17205,
+    "removed_percent": 8.759960286143428
+  }
+}
