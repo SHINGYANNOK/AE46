@@ -1,0 +1,266 @@
+{
+  "input_sha256": "c74dcbe5580ac40cdd24b3c1546208c5cbce0694e16947e62f8721f4ce9809b3",
+  "epochs": 6693,
+  "estimator_inputs": [
+    "sat_x",
+    "sat_y",
+    "sat_z",
+    "selected pseudorange"
+  ],
+  "estimated_state": [
+    "receiver_x",
+    "receiver_y",
+    "receiver_z",
+    "one common receiver_clock_bias_m"
+  ],
+  "ionosphere_stage": {
+    "status": "unavailable_not_applied",
+    "reason": "No model coefficients, signal frequencies, TEC products, or dual-frequency measurements are provided."
+  },
+  "assumptions": {
+    "cor_pseudo_processing_history": "unknown: further atmosphere correction may duplicate existing corrections",
+    "troposphere_model": "Saastamoinen, standard atmosphere, relative humidity 70%; ellipsoid height approximates atmospheric height",
+    "weight_model": "relative w_i=max(sin(E_i),sin(5 deg))^2, geometry-derived elevation",
+    "satellite_selection": "same observations retained in every corrected-pseudorange stage; no added masks or rejection",
+    "earth_rotation": "no additional correction in any stage",
+    "constellation_biases": "not used, to keep the baseline strictly XYZ+pseudorange",
+    "accuracy_reference": "none; all scatter is relative to each stage median, not true position error"
+  },
+  "stages": {
+    "raw_xyz_pseudorange_only": {
+      "converged_epochs": 6693,
+      "median_ecef_m": [
+        -2452370.915679693,
+        5448983.260124669,
+        2456541.848812378
+      ],
+      "median_lat_lon_ellipsoid_height": [
+        22.481833024057018,
+        114.23061728679203,
+        85628.73332186788
+      ],
+      "horizontal_scatter_radius_50_95_99_m": [
+        20194.935293975414,
+        35343.949379625636,
+        40043.40052812118
+      ],
+      "enu_standard_deviation_m": [
+        22042.53880140586,
+        7738.5051458336675,
+        36529.426474066866
+      ],
+      "ellipsoid_height_percentiles_5_50_95_m": [
+        30216.410159468836,
+        75865.16860476974,
+        139225.14176994897
+      ],
+      "residual_rms_percentiles_50_95_m": [
+        115202.6763167092,
+        119806.44493501865
+      ],
+      "median_relative_weighted_rms_m": 115202.6763167092,
+      "satellite_count_min_max": [
+        27,
+        32
+      ],
+      "minimum_geometric_elevation_deg": 1.7298641369109693,
+      "troposphere_delay_range_m": [
+        0.0,
+        0.0
+      ],
+      "median_shift_from_corrected_baseline_enu_m": [
+        4048.634869782057,
+        18935.68340565645,
+        85568.10354536005
+      ]
+    },
+    "corrected_xyz_pseudorange_only": {
+      "converged_epochs": 6693,
+      "median_ecef_m": [
+        -2419184.36445508,
+        5384991.2698192485,
+        2406536.550200485
+      ],
+      "median_lat_lon_ellipsoid_height": [
+        22.313115570103378,
+        114.19179657769847,
+        31.481834900565445
+      ],
+      "horizontal_scatter_radius_50_95_99_m": [
+        2.198916156378266,
+        8.801144441879453,
+        19.278099553933767
+      ],
+      "enu_standard_deviation_m": [
+        1.5890890999737297,
+        4.19662522049512,
+        11.942543990408533
+      ],
+      "ellipsoid_height_percentiles_5_50_95_m": [
+        22.18643330242485,
+        30.95253716316074,
+        54.98652252145109
+      ],
+      "residual_rms_percentiles_50_95_m": [
+        9.412102666063834,
+        17.183216513382035
+      ],
+      "median_relative_weighted_rms_m": 9.412102666063834,
+      "satellite_count_min_max": [
+        27,
+        32
+      ],
+      "minimum_geometric_elevation_deg": 2.0127324343271646,
+      "troposphere_delay_range_m": [
+        0.0,
+        0.0
+      ],
+      "median_shift_from_corrected_baseline_enu_m": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "corrected_plus_assumed_troposphere": {
+      "converged_epochs": 6693,
+      "median_ecef_m": [
+        -2419180.815958092,
+        5384980.841611001,
+        2406532.0204796093
+      ],
+      "median_lat_lon_ellipsoid_height": [
+        22.313115327131317,
+        114.19180663782112,
+        19.616650781594217
+      ],
+      "horizontal_scatter_radius_50_95_99_m": [
+        2.5193279196291187,
+        8.461715052252604,
+        18.636076954530942
+      ],
+      "enu_standard_deviation_m": [
+        1.7696878973146823,
+        4.234350726831959,
+        11.84349255851841
+      ],
+      "ellipsoid_height_percentiles_5_50_95_m": [
+        10.997118291631342,
+        19.05949427653104,
+        43.572568324021965
+      ],
+      "residual_rms_percentiles_50_95_m": [
+        9.13574900383375,
+        16.91100181051826
+      ],
+      "median_relative_weighted_rms_m": 9.13574900383375,
+      "satellite_count_min_max": [
+        27,
+        32
+      ],
+      "minimum_geometric_elevation_deg": 2.0128345158586596,
+      "troposphere_delay_range_m": [
+        2.4271297950977213,
+        69.02977747094971
+      ],
+      "median_shift_from_corrected_baseline_enu_m": [
+        1.0365371350307433,
+        -0.02690544368529695,
+        -11.86518420471417
+      ]
+    },
+    "corrected_plus_assumed_troposphere_and_weights": {
+      "converged_epochs": 6693,
+      "median_ecef_m": [
+        -2419181.0522686695,
+        5384981.864704429,
+        2406528.868000963
+      ],
+      "median_lat_lon_ellipsoid_height": [
+        22.313085458314603,
+        114.19180466082216,
+        19.372709325514734
+      ],
+      "horizontal_scatter_radius_50_95_99_m": [
+        1.7835382958556256,
+        4.727036843576158,
+        5.214715869791417
+      ],
+      "enu_standard_deviation_m": [
+        1.9016879255575945,
+        1.520785619818634,
+        4.710025226441154
+      ],
+      "ellipsoid_height_percentiles_5_50_95_m": [
+        13.648439460247754,
+        19.30334774032235,
+        26.914254997111847
+      ],
+      "residual_rms_percentiles_50_95_m": [
+        9.451467928300639,
+        18.48303476862555
+      ],
+      "median_relative_weighted_rms_m": 8.718794801914598,
+      "satellite_count_min_max": [
+        27,
+        32
+      ],
+      "minimum_geometric_elevation_deg": 2.0128489670989436,
+      "troposphere_delay_range_m": [
+        2.426761120691863,
+        69.04205422315687
+      ],
+      "median_shift_from_corrected_baseline_enu_m": [
+        0.8328386860643039,
+        -3.3344246897854273,
+        -12.10912650837974
+      ]
+    },
+    "corrected_weights_only_control": {
+      "converged_epochs": 6693,
+      "median_ecef_m": [
+        -2419183.510697651,
+        5384987.154972511,
+        2406531.5597855933
+      ],
+      "median_lat_lon_ellipsoid_height": [
+        22.313087947028542,
+        114.19180538498959,
+        25.791042299941182
+      ],
+      "horizontal_scatter_radius_50_95_99_m": [
+        1.965779262288335,
+        4.4634747554646195,
+        5.318502805225861
+      ],
+      "enu_standard_deviation_m": [
+        1.915367468658752,
+        1.5359397717251075,
+        4.709418530997042
+      ],
+      "ellipsoid_height_percentiles_5_50_95_m": [
+        19.903632058203222,
+        25.782900511287153,
+        33.77479314655065
+      ],
+      "residual_rms_percentiles_50_95_m": [
+        9.893373887553572,
+        19.17286359750324
+      ],
+      "median_relative_weighted_rms_m": 8.766319551727008,
+      "satellite_count_min_max": [
+        27,
+        32
+      ],
+      "minimum_geometric_elevation_deg": 2.0128296097334197,
+      "troposphere_delay_range_m": [
+        0.0,
+        0.0
+      ],
+      "median_shift_from_corrected_baseline_enu_m": [
+        0.9074536396159809,
+        -3.058840390702523,
+        -5.690793403956425
+      ]
+    }
+  }
+}

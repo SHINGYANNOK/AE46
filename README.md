@@ -320,3 +320,23 @@ The original standard-library linear solver has these limitations (the NumPy GNS
 - GNSS data loading and corrections for raw observations are not implemented.
 
 The simulated GNSS example described above is implemented in [gnss_ls.py](gnss_ls.py). The committed [test suite](test_gnss_ls.py) checks exact-state recovery, equivalence of equal weighting and ordinary least squares, reduced influence from an uncertain outlier, statistical outputs, and invalid uncertainty inputs.
+
+## Analyze the supplied MATLAB dataset
+
+The [dataset analysis tools](analysis/spp_position/README.md) apply the existing
+least-squares solver to a MATLAB v5 `sppStruct` with satellite ECEF positions and
+pseudoranges. The main run uses `cor_pseudo` with equal satellite weights and
+estimates receiver position plus a common clock offset at each epoch. It also
+fits one shared position with separate epoch clocks under a stationary-receiver
+assumption.
+
+```bash
+python analysis/spp_position/run_least_squares.py /path/to/sppStruct_user.mat
+```
+
+The [least-squares report](analysis/spp_position/least_squares/least_squares_report.md)
+and [numerical summary](analysis/spp_position/least_squares/summary.json) contain
+the results for 6,693 epochs. The source MAT file is supplied separately; generated
+CSV, KML and image exports are ignored by Git and can be regenerated locally.
+The fitted residuals and position scatter describe model fit and repeatability,
+not verified accuracy against a surveyed receiver location.

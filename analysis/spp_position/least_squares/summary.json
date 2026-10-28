@@ -1,0 +1,87 @@
+{
+  "input_sha256": "c74dcbe5580ac40cdd24b3c1546208c5cbce0694e16947e62f8721f4ce9809b3",
+  "pseudorange_field": "cor_pseudo",
+  "estimator_inputs": [
+    "sat_x",
+    "sat_y",
+    "sat_z",
+    "cor_pseudo"
+  ],
+  "time_metadata": "week/tow label exported rows only; not used to estimate position",
+  "weights": "equal for every observation",
+  "additional_corrections_applied": [],
+  "input_correction_history": "cor_pseudo is supplied already processed; exact source corrections unknown",
+  "epochs": 6693,
+  "satellite_observations": 196405,
+  "satellites_per_epoch_min_max": [
+    27,
+    32
+  ],
+  "per_epoch": {
+    "converged_epochs": 6693,
+    "median_ecef_m": [
+      -2419184.36445508,
+      5384991.2698192485,
+      2406536.550200485
+    ],
+    "mean_ecef_m": [
+      -2419185.292980178,
+      5384992.684845399,
+      2406538.4979144754
+    ],
+    "median_position_lat_lon_ellipsoidal_height": [
+      22.313115570103378,
+      114.19179657769847,
+      31.481834900565445
+    ],
+    "horizontal_scatter_percentiles_50_95_99_m": [
+      2.198916156378266,
+      8.801144441879453,
+      19.278099553933767
+    ],
+    "enu_scatter_standard_deviation_m": [
+      1.5890890999737297,
+      4.19662522049512,
+      11.942543990408533
+    ],
+    "residual_rms_percentiles_50_95_m": [
+      9.412102666063834,
+      17.183216513382032
+    ],
+    "iterations_min_median_max": [
+      5,
+      5.0,
+      5
+    ],
+    "max_final_normal_equation_absolute_component_m": 1.3783574104309082e-07,
+    "max_remaining_linearized_state_step_norm_m": 1.2851252968649496e-08
+  },
+  "stationary_combined": {
+    "assumption": "One constant receiver XYZ over the recording; independent clock bias at each epoch",
+    "position_ecef_m": [
+      -2419185.388948666,
+      5384993.44321855,
+      2406538.8714224347
+    ],
+    "position_lat_lon_ellipsoidal_height": [
+      22.313126725704844,
+      114.19179700356307,
+      34.58560526371002
+    ],
+    "converged": true,
+    "iterations": 5,
+    "residual_rms_m": 11.545488455647323,
+    "objective_sum_squared_residuals_m2": 26180453.33416938,
+    "offset_from_per_epoch_median_enu_m": [
+      0.043878735466040264,
+      1.235316930706204,
+      3.1037702405768797
+    ]
+  },
+  "limits": [
+    "Residual RMS is model fit, not position accuracy.",
+    "Scatter is relative to the per-epoch median; no surveyed ground truth is available.",
+    "The combined fit is only appropriate if the receiver remained stationary.",
+    "A single common receiver clock per epoch does not separately model inter-constellation offsets."
+  ]
+}

@@ -1,3 +1,9 @@
 __pycache__/
 *.py[cod]
 .venv/
+
+# Regenerable GNSS analysis exports.
+analysis/spp_position/**/*.csv
+analysis/spp_position/**/*.kml
+analysis/spp_position/**/*.kmz
+analysis/spp_position/**/*.png
